@@ -214,7 +214,7 @@ if [[ -n "$gpus_json" ]] ; then
         docker_cmd+=(--device "${gpu_card}:${gpu_card}" --device "${gpu_render}:${gpu_render}")
       fi
     else
-      notify -t "Docker" -m "GPU with PCI ID: $1 for container $name not found, please check your configuration" -p "warning"
+      notify -t "Docker" -m "GPU with PCI ID: $i for container $name not found, please check your configuration" -p "warning"
       echo "WARNING: GPU with PCI ID: $i not found, skipping"
     fi
   done < <(echo "$config" | jq -r '.gpus[]' 2>/dev/null)
@@ -272,9 +272,9 @@ if [[ "$gpu_extra_parameters" != "null" && -n "$gpu_extra_parameters" ]] ; then
   docker_cmd+=("$gpu_extra_parameters")
 fi
 
-if [[ "$extra_parameters" != "null" && -n "$extra_parameters" ]] ; then
-  # Split extra_parameters properly - assuming they are space-separated
-  read -ra extra_params_array <<< "$extra_parameters"
+# Add extra parameters to docker_cmd
+if [[ -n "$extra_parameters" && "$extra_parameters" != "null" ]] ; then
+  readarray -t extra_params_array < <(xargs -n1 <<< "$extra_parameters")
   docker_cmd+=("${extra_params_array[@]}")
 fi
 
@@ -282,8 +282,7 @@ fi
 docker_cmd+=("$repo")
 
 # Add post parameters to docker_cmd
-if [[ "$post_parameters" != "null" && -n "$post_parameters" ]] ; then
-  # Split post_parameters properly - assuming they are space-separated
+if [[ -n "$post_parameters" && "$post_parameters" != "null" ]] ; then
   readarray -t post_params_array < <(xargs -n1 <<< "$post_parameters")
   docker_cmd+=("${post_params_array[@]}")
 fi
@@ -415,6 +414,9 @@ fi
 
 # Display docker command
 echo -e "\n${docker_cmd[@]}"
+
+# Debug only - deactivated by default
+#printf '[%s]\n' "${docker_cmd[@]}"
 
 # Remove all dangling images from the deployed container repo (leftovers)
 if [[ "$UPDATE" = "true" ]] ; then
