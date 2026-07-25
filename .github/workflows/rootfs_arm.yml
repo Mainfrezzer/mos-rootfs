@@ -241,6 +241,13 @@ jobs:
         WSDDN_DEB=$(echo $WSDDN_JSON | jq --arg version v${WSDDN_VERSION#v} --arg arch "$DEB_ARCH" -r '.[] | select(.tag_name == $version) | .assets[] | select(.name | startswith("mos-wsdd-native") and endswith($arch + ".deb")) | .id')
         WSDDN_DEB_MD5=$(echo $WSDDN_JSON | jq --arg version v${WSDDN_VERSION#v} --arg arch "$DEB_ARCH" -r '.[] | select(.tag_name == $version) | .assets[] | select(.name | startswith("mos-wsdd-native") and endswith($arch + ".deb.md5")) | .id')
 
+        # Define DOCKERWD_VERSION
+        NVTOP_VERSION=$(echo $NVTOP_JSON | jq -r '.[].tag_name' | sort -V | tail -1)
+
+        # Get Asset IDs
+        NVTOP_DEB=$(echo $NVTOP_JSON | jq --arg version v${NVTOP_VERSION#v} --arg arch "$DEB_ARCH" -r '.[] | select(.tag_name == $version) | .assets[] | select(.name | startswith("mos-nvtop") and endswith($arch + ".deb")) | .id')
+        NVTOP_DEB_MD5=$(echo $NVTOP_JSON | jq --arg version v${NVTOP_VERSION#v} --arg arch "$DEB_ARCH" -r '.[] | select(.tag_name == $version) | .assets[] | select(.name | startswith("mos-nvtop") and endswith($arch + ".deb.md5")) | .id')
+
         # Download applications
         application_download "docker" "${DOCKER_VERSION#v}" "$DOCKER_DEB"
         application_download "docker" "${DOCKER_VERSION#v}" "$DOCKER_DEB_MD5" ".md5"
@@ -260,6 +267,8 @@ jobs:
         application_download "docker-watchdog" "${DOCKERWD_VERSION#v}" "$DOCKERWD_DEB_MD5" ".md5"
         application_download "wsddn" "${WSDDN_VERSION#v}" "$WSDDN_DEB"
         application_download "wsddn" "${WSDDN_VERSION#v}" "$WSDDN_DEB_MD5" ".md5"
+        application_download "nvtop" "${NVTOP_VERSION#v}" "$NVTOP_DEB"
+        application_download "nvtop" "${NVTOP_VERSION#v}" "$NVTOP_DEB_MD5" ".md5"
 
         # Add mergerfs tools
         cd ${{ github.workspace }}
