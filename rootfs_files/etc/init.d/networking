@@ -176,6 +176,22 @@ interface_config() {
   fi
 }
 
+# MOS custom: Queue an interface for parallel DHCP bring-up
+add_dhcp_interface() {
+  for QUEUED in $DHCP_INTERFACES ; do
+    [ "$QUEUED" = "$1" ] && return 0
+  done
+  DHCP_INTERFACES="${DHCP_INTERFACES:+$DHCP_INTERFACES }$1"
+}
+
+# MOS custom: Default an IPv6 address to /64 when the config carries no prefix length
+ipv6_with_prefix() {
+  case "$1" in
+    */*) echo "$1" ;;
+    *) echo "$1/64" ;;
+  esac
+}
+
 # MOS custom: Create bridge interface (idempotent — removes and recreates if exists)
 bridge_setup() {
   if ip link show "$1" > /dev/null 2>&1 ; then
@@ -378,7 +394,7 @@ configure_interfaces() {
   sysctl -wq net.ipv4.ip_forward=1
 
   # Enable or Disable IPv6 globally
-  IPV6=$(echo "$INTERFACES_JSON" | jq -r 'map(select((.type != "bridged") and (.ipv6 | length > 0))) | length > 0')
+  IPV6=$(echo "$INTERFACES_JSON" | jq -r '[.[] | select(.type != "bridged") | (((.ipv6 // []) | length > 0) or (((.vlans // []) | map((.ipv6 // []) | length > 0)) | any))] | any')
   if [ "${IPV6}" = "false" ] ; then
     disable_ipv6
   else
@@ -418,7 +434,7 @@ configure_interfaces() {
       if [ "$DHCP" != "false" ] ; then
         interface_config "auto $INTERFACE"
         interface_config "iface $INTERFACE inet dhcp"
-        DHCP_INTERFACES="${DHCP_INTERFACES:+$DHCP_INTERFACES }$INTERFACE"
+        add_dhcp_interface "$INTERFACE"
       else
         ADDRESS=$(echo "$INTERFACE_JSON" | jq -r '.ipv4[0].address // empty')
         GATEWAY=$(echo "$INTERFACE_JSON" | jq -r '.ipv4[0].gateway // empty')
@@ -490,6 +506,29 @@ configure_interfaces() {
       done
     fi
 
+    # IPv6 configuration (dual-stack: separate inet6 stanza)
+    # An explicit dhcp flag wins; without one an address implies static
+    IPV6_COUNT=$(echo "$INTERFACE_JSON" | jq '.ipv6 // [] | length')
+    if [ "$IPV6_COUNT" -gt 0 ] ; then
+      IPV6_MODE=$(echo "$INTERFACE_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif .ipv6[0].dhcp == false then "static" elif ((.ipv6[0].address // "") != "") then "static" else "dhcp" end')
+      IPV6_ADDRESS=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].address // empty')
+      if [ "$IPV6_MODE" = "dhcp" ] ; then
+        interface_config "iface $INTERFACE inet6 dhcp"
+        add_dhcp_interface "$INTERFACE"
+      elif [ -n "$IPV6_ADDRESS" ] ; then
+        IPV6_GATEWAY=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].gateway // empty')
+        IPV6_DNS=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].dns // [] | join(" ")')
+        interface_config "iface $INTERFACE inet6 static"
+        interface_config "    address $(ipv6_with_prefix "$IPV6_ADDRESS")"
+        if [ -n "$IPV6_GATEWAY" ] ; then
+          interface_config "    gateway $IPV6_GATEWAY"
+          interface_config "    accept_ra 0"
+          interface_config "    autoconf 0"
+        fi
+        [ -n "$IPV6_DNS" ] && interface_config "    dns-nameservers $IPV6_DNS"
+      fi
+    fi
+
     interface_config ""
 
     # VLAN configuration
@@ -511,7 +550,7 @@ configure_interfaces() {
         if [ "$VLAN_DHCP" != "false" ] ; then
           interface_config "auto $VLAN_IFACE"
           interface_config "iface $VLAN_IFACE inet dhcp"
-          DHCP_INTERFACES="${DHCP_INTERFACES:+$DHCP_INTERFACES }$VLAN_IFACE"
+          add_dhcp_interface "$VLAN_IFACE"
         else
           VLAN_ADDRESS=$(echo "$VLAN_JSON" | jq -r '.ipv4[0].address // empty')
           VLAN_GATEWAY=$(echo "$VLAN_JSON" | jq -r '.ipv4[0].gateway // empty')
@@ -526,6 +565,31 @@ configure_interfaces() {
 
       interface_config "    vlan-raw-device $INTERFACE"
       [ -n "$VLAN_MTU" ] && interface_config "    mtu $VLAN_MTU"
+
+      # VLAN IPv6 configuration (dual-stack: separate inet6 stanza)
+      VLAN_IPV6_COUNT=$(echo "$VLAN_JSON" | jq '.ipv6 // [] | length')
+      if [ "$VLAN_IPV6_COUNT" -gt 0 ] ; then
+        VLAN_IPV6_MODE=$(echo "$VLAN_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif .ipv6[0].dhcp == false then "static" elif ((.ipv6[0].address // "") != "") then "static" else "dhcp" end')
+        VLAN_IPV6_ADDRESS=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].address // empty')
+        if [ "$VLAN_IPV6_MODE" = "dhcp" ] ; then
+          interface_config "iface $VLAN_IFACE inet6 dhcp"
+          interface_config "    vlan-raw-device $INTERFACE"
+          add_dhcp_interface "$VLAN_IFACE"
+        elif [ -n "$VLAN_IPV6_ADDRESS" ] ; then
+          VLAN_IPV6_GATEWAY=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].gateway // empty')
+          VLAN_IPV6_DNS=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].dns // [] | join(" ")')
+          interface_config "iface $VLAN_IFACE inet6 static"
+          interface_config "    address $(ipv6_with_prefix "$VLAN_IPV6_ADDRESS")"
+          if [ -n "$VLAN_IPV6_GATEWAY" ] ; then
+            interface_config "    gateway $VLAN_IPV6_GATEWAY"
+            interface_config "    accept_ra 0"
+            interface_config "    autoconf 0"
+          fi
+          [ -n "$VLAN_IPV6_DNS" ] && interface_config "    dns-nameservers $VLAN_IPV6_DNS"
+          interface_config "    vlan-raw-device $INTERFACE"
+        fi
+      fi
+
       interface_config ""
 
       VIDX=$((VIDX + 1))
