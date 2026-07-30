@@ -4,6 +4,10 @@
 /bin/mount -t sysfs none /sys
 /bin/mount -t devtmpfs none /dev
 
+/sbin/modprobe sr_mod
+/sbin/modprobe cdrom
+/bin/sleep 1
+
 # Make Kernel less noisy in terminal
 /bin/echo 4 > /proc/sys/kernel/printk
 
