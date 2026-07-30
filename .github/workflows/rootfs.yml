@@ -324,7 +324,7 @@ jobs:
 
         # Add Memtest86+ License
         sudo mkdir -p $ROOTFS/usr/share/doc/memtest86plus
-        wget -q -O $ROOTFS/usr/share/doc/memtest86plus/LICENSE https://raw.githubusercontent.com/memtest86plus/memtest86plus/refs/heads/main/LICENSE
+        sudo wget -q -O $ROOTFS/usr/share/doc/memtest86plus/LICENSE https://raw.githubusercontent.com/memtest86plus/memtest86plus/refs/heads/main/LICENSE
 
         cd $ROOTFS
         sudo rm -rf $ROOTFS/root/.* $ROOTFS/var/log/* $ROOTFS/root/* $ROOTFS/tmp/* $ROOTFS/tmp/.* $ROOTFS/var/lib/apt/lists/* $ROOTFS/etc/init.d/.* $ROOTFS/etc/resolv.conf $ROOTFS/var/cache/apt/* $ROOTFS/var/cache/apt/.*
