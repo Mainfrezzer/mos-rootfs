@@ -344,9 +344,9 @@ jobs:
           --header "X-GitHub-Api-Version: 2022-11-28" \
           --output "$WORKDIR/frontend.tar.gz" \
           "https://api.github.com/repos/mos-nas/mos-frontend/releases/assets/$FRONTEND_ASSET_ID"
-        tar -C $ROOTFS/var/www/ -xf $WORKDIR/frontend.tar.gz
-        chown -R root:root $ROOTFS/var/www/
-        chmod -R 755 $ROOTFS/var/www/
+        sudo tar -C $ROOTFS/var/www/ -xf $WORKDIR/frontend.tar.gz
+        sudo chown -R root:root $ROOTFS/var/www/
+        sudo chmod -R 755 $ROOTFS/var/www/
 
         # Check node version
         NODE_V="$(node --version 2>/dev/null)"
