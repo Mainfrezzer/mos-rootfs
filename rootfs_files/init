@@ -20,7 +20,7 @@ fi
 # Get device to boot from
 for i in $(/usr/bin/seq 1 15); do
   /bin/echo "$(/sbin/blkid -c /dev/null)"
-  /bin/echo "$(/bin/ls /dev/)"
+  /bin/echo "$(/bin/ls /dev/s*)"
   if [ -b /dev/sr0 ]; then
       /bin/echo "$(/sbin/blkid -o value -s LABEL /dev/sr0)"
       CD_LABEL="$(/sbin/blkid -o value -s LABEL /dev/sr0 2>/dev/null)"
