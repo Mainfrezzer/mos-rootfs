@@ -323,11 +323,11 @@ jobs:
         mkdir -p $WORKDIR/release
 
         # Add Memtest86+ License
-        mkdir -p $ROOTFS/usr/share/doc/memtest86plus
+        sudo mkdir -p $ROOTFS/usr/share/doc/memtest86plus
         wget -q -O $ROOTFS/usr/share/doc/memtest86plus/LICENSE https://raw.githubusercontent.com/memtest86plus/memtest86plus/refs/heads/main/LICENSE
 
         cd $ROOTFS
-        rm -rf $ROOTFS/root/.* $ROOTFS/var/log/* $ROOTFS/root/* $ROOTFS/tmp/* $ROOTFS/tmp/.* $ROOTFS/var/lib/apt/lists/* $ROOTFS/etc/init.d/.* $ROOTFS/etc/resolv.conf $ROOTFS/var/cache/apt/* $ROOTFS/var/cache/apt/.*
+        sudo rm -rf $ROOTFS/root/.* $ROOTFS/var/log/* $ROOTFS/root/* $ROOTFS/tmp/* $ROOTFS/tmp/.* $ROOTFS/var/lib/apt/lists/* $ROOTFS/etc/init.d/.* $ROOTFS/etc/resolv.conf $ROOTFS/var/cache/apt/* $ROOTFS/var/cache/apt/.*
 
         # Grab latest frontend
         FRONTEND_JSON=$(curl -s --request GET \
@@ -361,12 +361,12 @@ jobs:
           if ! wget -O /tmp/node.xz https://nodejs.org/dist/v${{ github.event.inputs.node_version }}/node-v${{ github.event.inputs.node_version }}-linux-${NODE_PKG_ARCH}.tar.xz ; then
             exit 1
           fi
-          rm -rf /usr/bin/node
-          rm -rf /usr/bin/npm
-          rm -rf /usr/bin/npx
-          rm -rf /usr/lib/node_modules
-          rm -rf /usr/include/node
-          rm -rf /usr/share/doc/node
+          sudo rm -rf /usr/bin/node
+          sudo rm -rf /usr/bin/npm
+          sudo rm -rf /usr/bin/npx
+          sudo rm -rf /usr/lib/node_modules
+          sudo rm -rf /usr/include/node
+          sudo rm -rf /usr/share/doc/node
           tar -xf /tmp/node.xz
           rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
           cp -R /tmp/node-*/* /usr/
