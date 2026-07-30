@@ -80,6 +80,12 @@ else
   /bin/sleep infinity
 fi
 
+# Make config writable
+/bin/mkdir -p /run/config
+/bin/cp -a /boot/config/. /run/config/
+/bin/mount -t tmpfs -o size=32M tmpfs /boot/config
+/bin/cp -a /run/config/. /boot/config/
+
 # Execute md5 check if not disabled
 if [ ! -f /boot/config/system/md5check_disabled ] ; then
   /usr/bin/echo "Starting .md5 check from boot files"
