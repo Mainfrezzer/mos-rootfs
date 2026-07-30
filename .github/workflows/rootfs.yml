@@ -93,6 +93,7 @@ jobs:
     - name: Setup rootfs
       run: |
         cd ${{ github.workspace }}
+        sudo apt remove -y debootstrap && wget http://deb.devuan.org/devuan/pool/main/d/debootstrap/debootstrap_1.0.144devuan1_all.deb && sudo apt install -y ./debootstrap_1.0.144devuan1_all.deb
         sudo debootstrap --variant=minbase excalibur ${{ github.workspace }}/rootfs https://pkgmaster.devuan.org/merged
         cp -R ${{ github.workspace }}/rootfs_files ${{ github.workspace }}/rootfs/tmp/
         cp ${{ github.workspace }}/chroot-script.sh ${{ github.workspace }}/rootfs/tmp/chroot-script.sh
