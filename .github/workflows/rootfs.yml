@@ -373,16 +373,6 @@ jobs:
           sudo rm -rf /tmp/node-* /tmp/node.xz
         fi
 
-        # Get latest API
-        sudo git clone https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/mos-nas/mos-api.git --depth=1 $ROOTFS/usr/local/lib/mos-api
-        API_V=$(date -d @"$(git -C $ROOTFS/usr/local/lib/mos-api log -1 --format=%ct)" "+%Y%m%d-%H%M")
-        sudo rm -rf $ROOTFS/usr/local/lib/mos-api/.git $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api/package-lock.json
-        cd $ROOTFS/usr/local/lib/mos-api
-        sudo npm install
-        sudo mv $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api-node_modules
-        sudo rm -f $ROOTFS/usr/local/lib/mos-api/package-lock.json
-        sudo chown -R root:root $ROOTFS/usr/local/lib/mos-api
-        sudo chmod -R 755 $ROOTFS/usr/local/lib/mos-api
 
         CHANNEL=${{ github.event.inputs.mos_channel }}
         VERSION=${{ github.event.inputs.mos_version }}
