@@ -130,6 +130,8 @@ rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
 cp -R /tmp/node-*/* /usr/
 
 # Get latest API
+apt-get update
+apt-get install -y --no-install-recommends build-essential python3
 git clone https://oauth2:${2}@github.com/mos-nas/mos-api.git --depth=1 /usr/local/lib/mos-api
 
 API_V=$(date -d @"$(git -C /usr/local/lib/mos-api log -1 --format=%ct)" "+%Y%m%d-%H%M")
@@ -147,6 +149,11 @@ rm -f package-lock.json
 
 chown -R root:root /usr/local/lib/mos-api
 chmod -R 755 /usr/local/lib/mos-api
+
+apt purge -y build-essential
+apt autoremove -y
+apt clean
+rm -rf /var/lib/apt/lists/*
 
 # /etc/passwd editieren:
 sed -i '/^root::/c root::0:0:root:/root:/bin/bash' /etc/passwd
