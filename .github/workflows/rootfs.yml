@@ -93,7 +93,7 @@ jobs:
     - name: Setup rootfs
       run: |
         cd ${{ github.workspace }}
-        debootstrap --variant=minbase excalibur ${{ github.workspace }}/rootfs https://pkgmaster.devuan.org/merged
+        sudo debootstrap --variant=minbase excalibur ${{ github.workspace }}/rootfs https://pkgmaster.devuan.org/merged
         cp -R ${{ github.workspace }}/rootfs_files ${{ github.workspace }}/rootfs/tmp/
         cp ${{ github.workspace }}/chroot-script.sh ${{ github.workspace }}/rootfs/tmp/chroot-script.sh
         chmod +x ${{ github.workspace }}/rootfs/tmp/chroot-script.sh
