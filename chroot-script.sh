@@ -24,8 +24,17 @@ for deb_app in $DEB_APPS; do
 done
 
 # Get latest API
-apt update
-apt install -y --no-install-recommends build-essential python3
+cd /tmp
+if ! wget -O /tmp/node.xz https://nodejs.org/dist/v${1}/node-v${1}-linux-${NODE_PKG_ARCH}.tar.xz ; then
+  exit 1
+fi
+tar -xf /tmp/node.xz
+mkdir -p /usr/share/doc/node
+mv /tmp/node-*/LICENSE* /tmp/node-*/share/doc/node/
+rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
+cp -R /tmp/node-*/* /usr/
+
+apt-get install -y --no-install-recommends build-essential
 git clone https://oauth2:${2}@github.com/mos-nas/mos-api.git --depth=1 /usr/local/lib/mos-api
 
 API_V=$(date -d @"$(git -C /usr/local/lib/mos-api log -1 --format=%ct)" "+%Y%m%d-%H%M")
@@ -144,16 +153,6 @@ groupdel sambashare
 
 cd /etc
 ln -sf /proc/mounts mtab
-
-cd /tmp
-if ! wget -O /tmp/node.xz https://nodejs.org/dist/v${1}/node-v${1}-linux-${NODE_PKG_ARCH}.tar.xz ; then
-  exit 1
-fi
-tar -xf /tmp/node.xz
-mkdir -p /usr/share/doc/node
-mv /tmp/node-*/LICENSE* /tmp/node-*/share/doc/node/
-rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
-cp -R /tmp/node-*/* /usr/
 
 # /etc/passwd editieren:
 sed -i '/^root::/c root::0:0:root:/root:/bin/bash' /etc/passwd
