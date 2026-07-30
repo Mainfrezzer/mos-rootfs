@@ -367,10 +367,10 @@ jobs:
           sudo rm -rf /usr/lib/node_modules
           sudo rm -rf /usr/include/node
           sudo rm -rf /usr/share/doc/node
-          tar -xf /tmp/node.xz
-          rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
-          cp -R /tmp/node-*/* /usr/
-          rm -rf /tmp/node-* /tmp/node.xz
+          sudo tar -xf /tmp/node.xz
+          sudo rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
+          sudo cp -R /tmp/node-*/* /usr/
+          sudo rm -rf /tmp/node-* /tmp/node.xz
         fi
 
         # Get latest API
