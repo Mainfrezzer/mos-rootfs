@@ -19,7 +19,15 @@ fi
 
 # Get device to boot from
 for i in $(/usr/bin/seq 1 15); do
+  if [ -b /dev/sr0 ]; then
+      CD_LABEL="$(/sbin/blkid -o value -s LABEL /dev/sr0 2>/dev/null)"
+      if [ "$CD_LABEL" = "$BOOT_LABEL" ]; then
+          BOOT_DEVICE="/dev/sr0"
+      fi
+  fi
+  if [ -z "$BOOT_DEVICE" ]; then
   BOOT_DEVICE="$(/sbin/blkid -L "$BOOT_LABEL")"
+  fi
   [ ! -z "$BOOT_DEVICE" ] && break
   /bin/sleep 1
 done
