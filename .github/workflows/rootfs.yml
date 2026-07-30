@@ -314,7 +314,7 @@ jobs:
 
     - name: Modify rootfs
       run: |
-        chroot ${{ github.workspace }}/rootfs /tmp/chroot-script.sh "${{ github.event.inputs.node_version }}"
+        sudo chroot ${{ github.workspace }}/rootfs /tmp/chroot-script.sh "${{ github.event.inputs.node_version }}"
 
     - name: Create MOS release
       run: |
