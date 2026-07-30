@@ -129,6 +129,25 @@ mv /tmp/node-*/LICENSE* /tmp/node-*/share/doc/node/
 rm -f /tmp/node-*/CHANGE* /tmp/node-*/README*
 cp -R /tmp/node-*/* /usr/
 
+# Get latest API
+git clone https://oauth2:${2}@github.com/mos-nas/mos-api.git --depth=1 /usr/local/lib/mos-api
+
+API_V=$(date -d @"$(git -C /usr/local/lib/mos-api log -1 --format=%ct)" "+%Y%m%d-%H%M")
+echo "$API_V" > /tmp/api-version
+
+rm -rf /usr/local/lib/mos-api/.git \
+       /usr/local/lib/mos-api/node_modules \
+       /usr/local/lib/mos-api/package-lock.json
+
+cd /usr/local/lib/mos-api
+npm install
+
+mv node_modules /usr/local/lib/mos-api-node_modules
+rm -f package-lock.json
+
+chown -R root:root /usr/local/lib/mos-api
+chmod -R 755 /usr/local/lib/mos-api
+
 # /etc/passwd editieren:
 sed -i '/^root::/c root::0:0:root:/root:/bin/bash' /etc/passwd
 
