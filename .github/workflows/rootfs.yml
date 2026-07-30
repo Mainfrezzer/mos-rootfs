@@ -389,7 +389,7 @@ jobs:
         RECOMMENDED_KERNEL=${{ github.event.inputs.mos_recommended_kernel }}-mos
 
         sudo chmod +x $WORKDIR/mos-json
-        $WORKDIR/mos-json "$CHANNEL" "$VERSION" "$RECOMMENDED_KERNEL" "$ROOTFS" "$FRONTEND_V" "$API_V" "${{ github.event.inputs.node_version }}" > $ROOTFS/etc/mos-release.json
+        sudo $WORKDIR/mos-json "$CHANNEL" "$VERSION" "$RECOMMENDED_KERNEL" "$ROOTFS" "$FRONTEND_V" "$API_V" "${{ github.event.inputs.node_version }}" > $ROOTFS/etc/mos-release.json
         sudo chown root:root $ROOTFS/etc/mos-release.json
         sudo chmod 755 $ROOTFS/etc/mos-release.json
         cp $ROOTFS/etc/mos-release.json $WORKDIR/release/mos-release.json
