@@ -1,5 +1,5 @@
 #!/bin/bash
-echo "nameserver 10.0.0.5" > /etc/resolv.conf
+echo "nameserver 1.1.1.1" > /etc/resolv.conf
 
 ARCHITECTURE="$(uname -m)"
 if [ "$ARCHITECTURE" == "x86_64" ] ; then
