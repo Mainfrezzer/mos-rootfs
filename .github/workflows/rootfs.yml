@@ -374,24 +374,24 @@ jobs:
         fi
 
         # Get latest API
-        git clone https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/mos-nas/mos-api.git --depth=1 $ROOTFS/usr/local/lib/mos-api
+        sudo git clone https://oauth2:${{ secrets.GITHUB_TOKEN }}@github.com/mos-nas/mos-api.git --depth=1 $ROOTFS/usr/local/lib/mos-api
         API_V=$(date -d @"$(git -C $ROOTFS/usr/local/lib/mos-api log -1 --format=%ct)" "+%Y%m%d-%H%M")
-        rm -rf $ROOTFS/usr/local/lib/mos-api/.git $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api/package-lock.json
+        sudo rm -rf $ROOTFS/usr/local/lib/mos-api/.git $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api/package-lock.json
         cd $ROOTFS/usr/local/lib/mos-api
-        npm install
-        mv $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api-node_modules
-        rm -f $ROOTFS/usr/local/lib/mos-api/package-lock.json
-        chown -R root:root $ROOTFS/usr/local/lib/mos-api
-        chmod -R 755 $ROOTFS/usr/local/lib/mos-api
+        sudo npm install
+        sudo mv $ROOTFS/usr/local/lib/mos-api/node_modules $ROOTFS/usr/local/lib/mos-api-node_modules
+        sudo rm -f $ROOTFS/usr/local/lib/mos-api/package-lock.json
+        sudo chown -R root:root $ROOTFS/usr/local/lib/mos-api
+        sudo chmod -R 755 $ROOTFS/usr/local/lib/mos-api
 
         CHANNEL=${{ github.event.inputs.mos_channel }}
         VERSION=${{ github.event.inputs.mos_version }}
         RECOMMENDED_KERNEL=${{ github.event.inputs.mos_recommended_kernel }}-mos
 
-        chmod +x $WORKDIR/mos-json
+        sudo chmod +x $WORKDIR/mos-json
         $WORKDIR/mos-json "$CHANNEL" "$VERSION" "$RECOMMENDED_KERNEL" "$ROOTFS" "$FRONTEND_V" "$API_V" "${{ github.event.inputs.node_version }}" > $ROOTFS/etc/mos-release.json
-        chown root:root $ROOTFS/etc/mos-release.json
-        chmod 755 $ROOTFS/etc/mos-release.json
+        sudo chown root:root $ROOTFS/etc/mos-release.json
+        sudo chmod 755 $ROOTFS/etc/mos-release.json
         cp $ROOTFS/etc/mos-release.json $WORKDIR/release/mos-release.json
 
         echo "Compressing rootfs..."
