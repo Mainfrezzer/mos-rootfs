@@ -606,6 +606,15 @@ configure_interfaces() {
 
 case "$1" in
   start)
+
+    KERNEL_IP=$(cat /proc/cmdline | grep -o 'ip=[^ ]*')
+
+    if [ -n "$KERNEL_IP" ]; then
+        echo "Keeping kernel supplied network configuration: $KERNEL_IP"
+        check_ifstate
+        exit 0
+    fi
+
     # MOS custom:
     reconcile_interfaces
     configure_interfaces
