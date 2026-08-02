@@ -110,7 +110,7 @@ configure_nut() {
     done
   } > /etc/nut/upsmon.conf
 
-  printf '#!/bin/sh\nexec mos-api_cli ups:event "$NOTIFYTYPE"\n' > /etc/nut/mos-notify
+  printf '#!/bin/sh\nexec /usr/local/bin/mos-api_cli ups:event "$NOTIFYTYPE"\n' > /etc/nut/mos-notify
   chmod +x /etc/nut/mos-notify
 
   if [ "$(jq -r '.shutdown.mode // "lowbattery"' "$NUT_JSON")" = "timer" ] ; then
