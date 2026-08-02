@@ -212,6 +212,23 @@ const commands = {
     }
   },
 
+  // NUT / UPS
+  'ups:event': {
+    description: 'Handle a NUT event (called by upsmon NOTIFYCMD): ups:event <TYPE>',
+    handler: async (args) => {
+      const type = args[0];
+      if (!type) {
+        throw new Error('Event type is required. Usage: ups:event <TYPE>');
+      }
+      return await getService('nut').handleEvent(type);
+    }
+  },
+
+  'ups:status': {
+    description: 'Get current UPS status',
+    handler: async () => await getService('nut').getStatus()
+  },
+
   // Help
   'help': {
     description: 'Show this help message',
