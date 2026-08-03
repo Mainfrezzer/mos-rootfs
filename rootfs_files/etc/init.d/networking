@@ -109,7 +109,7 @@ ifup_hotplug () {
         fi
       done)
     if [ -n "$ifaces" ] ; then
-      ifup $ifaces "$@" || true
+      timeout 60 ifup $ifaces "$@" || true
     fi
   fi
 }
@@ -121,7 +121,7 @@ ifup_parallel() {
 
   if [ -z "$DHCP_IFACES" ] ; then
     # No DHCP interfaces — standard bring-up
-    ifup -a "$@"
+    timeout 60 ifup -a "$@"
     return $?
   fi
 
@@ -132,11 +132,12 @@ ifup_parallel() {
   done
 
   # Bring up non-DHCP interfaces (instant)
-  ifup -a $dhcp_exclusions "$@" || true
+  timeout 60 ifup -a $dhcp_exclusions "$@" || true
 
   # Bring up DHCP interfaces in parallel (console output suppressed, dhclient logs to syslog)
+  # 90s covers one full dhclient solicit window (60s) — anything longer means no server answers
   for iface in $DHCP_IFACES ; do
-    ifup "$iface" "$@" > /dev/null 2>&1 &
+    timeout 90 ifup "$iface" "$@" > /dev/null 2>&1 &
   done
   wait
 
@@ -394,7 +395,7 @@ configure_interfaces() {
   sysctl -wq net.ipv4.ip_forward=1
 
   # Enable or Disable IPv6 globally
-  IPV6=$(echo "$INTERFACES_JSON" | jq -r '[.[] | select(.type != "bridged") | (((.ipv6 // []) | length > 0) or (((.vlans // []) | map((.ipv6 // []) | length > 0)) | any))] | any')
+  IPV6=$(echo "$INTERFACES_JSON" | jq -r 'def usable: length > 0 and ((.[0].dhcp == true) or ((.[0].address // "") != "")); [.[] | select(.type != "bridged") | (((.ipv6 // []) | usable) or (((.vlans // []) | map((.ipv6 // []) | usable)) | any))] | any')
   if [ "${IPV6}" = "false" ] ; then
     disable_ipv6
   else
@@ -507,15 +508,15 @@ configure_interfaces() {
     fi
 
     # IPv6 configuration (dual-stack: separate inet6 stanza)
-    # An explicit dhcp flag wins; without one an address implies static
+    # DHCPv6 only on an explicit flag
     IPV6_COUNT=$(echo "$INTERFACE_JSON" | jq '.ipv6 // [] | length')
     if [ "$IPV6_COUNT" -gt 0 ] ; then
-      IPV6_MODE=$(echo "$INTERFACE_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif .ipv6[0].dhcp == false then "static" elif ((.ipv6[0].address // "") != "") then "static" else "dhcp" end')
-      IPV6_ADDRESS=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].address // empty')
+      IPV6_MODE=$(echo "$INTERFACE_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif ((.ipv6[0].address // "") != "") then "static" else "none" end')
       if [ "$IPV6_MODE" = "dhcp" ] ; then
         interface_config "iface $INTERFACE inet6 dhcp"
         add_dhcp_interface "$INTERFACE"
-      elif [ -n "$IPV6_ADDRESS" ] ; then
+      elif [ "$IPV6_MODE" = "static" ] ; then
+        IPV6_ADDRESS=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].address // empty')
         IPV6_GATEWAY=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].gateway // empty')
         IPV6_DNS=$(echo "$INTERFACE_JSON" | jq -r '.ipv6[0].dns // [] | join(" ")')
         interface_config "iface $INTERFACE inet6 static"
@@ -569,13 +570,13 @@ configure_interfaces() {
       # VLAN IPv6 configuration (dual-stack: separate inet6 stanza)
       VLAN_IPV6_COUNT=$(echo "$VLAN_JSON" | jq '.ipv6 // [] | length')
       if [ "$VLAN_IPV6_COUNT" -gt 0 ] ; then
-        VLAN_IPV6_MODE=$(echo "$VLAN_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif .ipv6[0].dhcp == false then "static" elif ((.ipv6[0].address // "") != "") then "static" else "dhcp" end')
-        VLAN_IPV6_ADDRESS=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].address // empty')
+        VLAN_IPV6_MODE=$(echo "$VLAN_JSON" | jq -r 'if .ipv6[0].dhcp == true then "dhcp" elif ((.ipv6[0].address // "") != "") then "static" else "none" end')
         if [ "$VLAN_IPV6_MODE" = "dhcp" ] ; then
           interface_config "iface $VLAN_IFACE inet6 dhcp"
           interface_config "    vlan-raw-device $INTERFACE"
           add_dhcp_interface "$VLAN_IFACE"
-        elif [ -n "$VLAN_IPV6_ADDRESS" ] ; then
+        elif [ "$VLAN_IPV6_MODE" = "static" ] ; then
+          VLAN_IPV6_ADDRESS=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].address // empty')
           VLAN_IPV6_GATEWAY=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].gateway // empty')
           VLAN_IPV6_DNS=$(echo "$VLAN_JSON" | jq -r '.ipv6[0].dns // [] | join(" ")')
           interface_config "iface $VLAN_IFACE inet6 static"
@@ -636,7 +637,7 @@ case "$1" in
     check_network_swap
 
     log_action_begin_msg "Deconfiguring network interfaces"
-    if ifdown -a --exclude=lo $verbose ; then
+    if timeout 60 ifdown -a --exclude=lo $verbose ; then
       log_action_end_msg $?
     else
       log_action_end_msg $?
@@ -648,7 +649,7 @@ case "$1" in
 
     log_action_begin_msg "Reloading network interfaces configuration"
     state=$(ifquery --state)
-    ifdown -a --exclude=lo $verbose || true
+    timeout 60 ifdown -a --exclude=lo $verbose || true
 
     # MOS custom:
     reconcile_interfaces
@@ -668,7 +669,7 @@ case "$1" in
 
     log_warning_msg "Manual network restart is not recommended. Please use the MOS WebUI to configure networking."
     log_action_begin_msg "Reconfiguring network interfaces"
-    ifdown -a --exclude=lo $verbose || true
+    timeout 60 ifdown -a --exclude=lo $verbose || true
 
     # MOS custom:
     reconcile_interfaces
