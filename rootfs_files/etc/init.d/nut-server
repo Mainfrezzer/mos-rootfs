@@ -36,11 +36,104 @@ UPSD_OPTIONS=""
 # Exit if the package is not installed
 [ -x "$upsd" ] || exit 0
 
-# MOS Custom
-cp /boot/config/system/nut/* /etc/nut/
+# MOS Custom: remove existing deprecated config files
+[ -f "/boot/config/system/nut/nut.conf"] \
+  && rm -f /boot/config/system/nut/nut.conf
+[ -f "/boot/config/system/nut/ups.conf"] \
+  && rm -f /boot/config/system/nut/ups.conf
+[ -f "/boot/config/system/nut/upsd.conf"] \
+  && rm -f /boot/config/system/nut/upsd.conf
+[ -f "/boot/config/system/nut/upsd.users"] \
+  && rm -f /boot/config/system/nut/upsd.users
+[ -f "/boot/config/system/nut/upsmon.conf"] \
+  && rm -f /boot/config/system/nut/upsmon.conf
+[ -f "/boot/config/system/nut/upssched.conf"] \
+  && rm -f /boot/config/system/nut/upssched.conf
 
-chown -R nut:nut /etc/nut
-chmod -R 777 /etc/nut
+# MOS Custom: render /etc/nut files from json
+NUT_JSON="/boot/config/system/nut.json"
+
+configure_nut() {
+  [ -f "$NUT_JSON" ] || return 0
+
+  mkdir -p /etc/nut
+
+  ENABLED=$(jq -r '.enabled // false' "$NUT_JSON")
+  MODE=$(jq -r '.mode // "standalone"' "$NUT_JSON")
+  [ "$ENABLED" = "true" ] || MODE="none"
+
+  echo "MODE=$MODE" > /etc/nut/nut.conf
+
+  if [ "$MODE" = "none" ] ; then
+    chown -R nut:nut /etc/nut 2>/dev/null || true
+    return 0
+  fi
+
+  if [ "$MODE" = "standalone" ] || [ "$MODE" = "netserver" ] ; then
+    {
+      echo "[$(jq -r '.server.ups.name // "ups"' "$NUT_JSON")]"
+      jq -r '"driver = \(.server.ups.driver // "usbhid-ups")"' "$NUT_JSON"
+      jq -r '"port = \(.server.ups.port // "auto")"' "$NUT_JSON"
+      UPS_DESC=$(jq -r '.server.ups.desc // ""' "$NUT_JSON")
+      [ -n "$UPS_DESC" ] && echo "desc = \"$UPS_DESC\""
+      jq -r '(.server.ups.extra // {}) | to_entries[] | "\(.key) = \(.value)"' "$NUT_JSON"
+    } > /etc/nut/ups.conf
+
+    jq -r '(.server.listen // [])[] | "LISTEN \(.address) \(.port)"' "$NUT_JSON" > /etc/nut/upsd.conf
+
+    jq -r '
+      (.server.users // [])[] |
+      "[\(.username)]",
+      "password = \(.password // "")",
+      ((.actions // [])[] | "actions = \(.)"),
+      ((.instcmds // [])[] | "instcmds = \(.)"),
+      (if .upsmon then "upsmon \(.upsmon)" else empty end),
+      ""
+    ' "$NUT_JSON" > /etc/nut/upsd.users
+  fi
+
+  {
+    jq -r '"MONITOR \(.monitor.upsname // "ups")@\(.monitor.host // "127.0.0.1"):\(.monitor.port // 3493) \(.monitor.powervalue // 1) \(.monitor.username // "") \(.monitor.password // "") \(.monitor.role // "primary")"' "$NUT_JSON"
+    jq -r '"MINSUPPLIES \(.shutdown.minsupplies // 1)"' "$NUT_JSON"
+    jq -r '"SHUTDOWNCMD \"\(.shutdown.command // "/sbin/shutdown -h +0")\""' "$NUT_JSON"
+    jq -r '"POWERDOWNFLAG \(.shutdown.powerdownflag // "/etc/killpower")"' "$NUT_JSON"
+    jq -r '"FINALDELAY \(.shutdown.finaldelay // 5)"' "$NUT_JSON"
+    jq -r '"POLLFREQ \(.timers.pollfreq // 5)"' "$NUT_JSON"
+    jq -r '"POLLFREQALERT \(.timers.pollfreqalert // 5)"' "$NUT_JSON"
+    jq -r '"HOSTSYNC \(.timers.hostsync // 15)"' "$NUT_JSON"
+    jq -r '"DEADTIME \(.timers.deadtime // 15)"' "$NUT_JSON"
+    jq -r '"RBWARNTIME \(.timers.rbwarntime // 43200)"' "$NUT_JSON"
+    jq -r '"NOCOMMWARNTIME \(.timers.nocommwarntime // 300)"' "$NUT_JSON"
+    echo "NOTIFYCMD /etc/nut/mos-notify"
+    for EV in ONLINE ONBATT SHUTDOWN LOWBATT FSD COMMBAD NOCOMM NOPARENT REPLBATT ; do
+      echo "NOTIFYFLAG $EV SYSLOG+EXEC"
+    done
+  } > /etc/nut/upsmon.conf
+
+  printf '#!/bin/sh\nexec /usr/local/bin/mos-api_cli ups:event "$NOTIFYTYPE"\n' > /etc/nut/mos-notify
+  chmod +x /etc/nut/mos-notify
+
+  if [ "$(jq -r '.shutdown.mode // "lowbattery"' "$NUT_JSON")" = "timer" ] ; then
+    TIMER=$(jq -r '.shutdown.timer_seconds // 180' "$NUT_JSON")
+    mkdir -p /run/nut/upssched
+    {
+      echo "CMDSCRIPT /etc/nut/mos-upssched-cmd"
+      echo "PIPEFN /run/nut/upssched/upssched.pipe"
+      echo "LOCKFN /run/nut/upssched/upssched.lock"
+      echo "AT ONBATT * START-TIMER mos-upsshutdown $TIMER"
+      echo "AT ONLINE * CANCEL-TIMER mos-upsshutdown"
+    } > /etc/nut/upssched.conf
+    printf '#!/bin/sh\ncase "$1" in\n  mos-upsshutdown) /sbin/upsmon -c fsd ;;\nesac\n' > /etc/nut/mos-upssched-cmd
+    chmod +x /etc/nut/mos-upssched-cmd
+  else
+    rm -f /etc/nut/upssched.conf /etc/nut/mos-upssched-cmd 2>/dev/null || true
+  fi
+
+  chown -R nut:nut /etc/nut 2>/dev/null || true
+  chmod 640 /etc/nut/upsd.users 2>/dev/null || true
+}
+
+configure_nut
 
 # Include NUT nut.conf
 [ -r $CONFIG ] && . $CONFIG
@@ -180,4 +273,3 @@ case "$1" in
 esac
 
 exit 0
-

@@ -7,6 +7,7 @@ VM_JSON=$(jq '.' /boot/config/vm.json 2>/dev/null)
 NETWORK_JSON=$(jq '.' /boot/config/network.json 2>/dev/null)
 HUB_JSON=$(jq '.' /boot/config/system/hub.json 2>/dev/null)
 ZRAM_JSON=$(jq '.' /boot/config/system/zram.json 2>/dev/null)
+NUT_JSON=$(jq '.' /boot/config/system/nut.json 2>/dev/null)
 
 # Make sure to change default api port from 3000 to 998
 # May be removed in the future (change affects: 0.1.8-beta and up)
@@ -123,7 +124,7 @@ mount_vpools() {
 
 # Start NUT UPS service if enabled
 start_nut() {
-  NUT_ENABLED=$(echo "$NETWORK_JSON" | jq -r '.services.nut.enabled')
+  NUT_ENABLED=$(echo "$NUT_JSON" | jq -r '.enabled')
   if [ "$NUT_ENABLED" = "true" ] ; then
     /etc/init.d/nut-server start
     /etc/init.d/nut-client start
